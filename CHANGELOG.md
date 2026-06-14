@@ -14,8 +14,9 @@ contain breaking changes.
   server and cached locally for 5 minutes, so a better prompt ships
   server-side without a CLI release. Implies JSON-only output.
 - `tutamen skill:install` — install the bundled `tutamen-security` agent skill
-  into Claude Code (`.claude/skills`) or Codex (`--agent=codex`, `.codex/skills`),
-  per-project or `--global`; `--print` writes it to stdout for any other agent.
+  into both Claude Code (`.claude/skills`) and Codex (`.codex/skills`) by
+  default, per-project or `--global`; `--agent=claude|codex` narrows to one,
+  and `--print` writes it to stdout for any other agent.
   The skill ships with the CLI, so no repo checkout is needed.
 
 ## [0.1.0] - 2026-06-14
