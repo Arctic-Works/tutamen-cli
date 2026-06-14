@@ -1,0 +1,47 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+foreach ([
+    __DIR__.'/../vendor/autoload.php',   // package checkout
+    __DIR__.'/../../../autoload.php',    // installed as a global/dependency
+] as $autoload) {
+    if (file_exists($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+use Composer\InstalledVersions;
+use Symfony\Component\Console\Application;
+use Tutamen\Cli\Console\AuthCommand;
+use Tutamen\Cli\Console\AuthLogoutCommand;
+use Tutamen\Cli\Console\AuthStatusCommand;
+use Tutamen\Cli\Console\HooksInstallCommand;
+use Tutamen\Cli\Console\HooksUninstallCommand;
+use Tutamen\Cli\Console\ScanCommand;
+
+// Report the actually-installed version (from the Composer metadata) rather
+// than a hardcoded string, so `tutamen --version` never drifts from the tag.
+$version = '0.1.0-dev';
+
+if (class_exists(InstalledVersions::class)) {
+    try {
+        $version = InstalledVersions::getPrettyVersion('tutamen/cli') ?? $version;
+    } catch (\OutOfBoundsException) {
+        // Running from a checkout where the package isn't registered — keep the fallback.
+    }
+}
+
+$application = new Application('tutamen', $version);
+$application->addCommands([
+    new ScanCommand,
+    new AuthCommand,
+    new AuthStatusCommand,
+    new AuthLogoutCommand,
+    new HooksInstallCommand,
+    new HooksUninstallCommand,
+]);
+
+exit($application->run());

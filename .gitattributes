@@ -1,0 +1,9 @@
+# Keep the published dist archive lean: development-only paths are excluded
+# from the Composer zip Packagist generates.
+/tests           export-ignore
+/.phpunit.cache  export-ignore
+/phpunit.xml     export-ignore
+/.gitattributes  export-ignore
+/.gitignore      export-ignore
+/CHANGELOG.md    export-ignore
+/PUBLISHING.md   export-ignore

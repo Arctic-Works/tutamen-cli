@@ -1,0 +1,55 @@
+{
+    "name": "tutamen/cli",
+    "description": "Tutamen CLI — scan your Laravel working tree for security issues before you push",
+    "type": "library",
+    "keywords": ["laravel", "security", "cli", "sast", "secrets", "pre-push", "git-hook", "static-analysis"],
+    "homepage": "https://tutamen.io",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Arctic Works",
+            "email": "info@koenschipper.com",
+            "homepage": "https://tutamen.io"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/Arctic-Works/tutamen-cli/issues",
+        "source": "https://github.com/Arctic-Works/tutamen-cli",
+        "docs": "https://tutamen.io/docs/cli"
+    },
+    "require": {
+        "php": "^8.3",
+        "ext-json": "*",
+        "composer-runtime-api": "^2.2",
+        "guzzlehttp/guzzle": "^7.8",
+        "symfony/console": "^7.0",
+        "symfony/process": "^7.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tutamen\\Cli\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tutamen\\Cli\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/tutamen"
+    ],
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

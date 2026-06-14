@@ -1,0 +1,28 @@
+{
+    "status": "completed",
+    "finished": true,
+    "stats": { "total_findings": 3, "severity_counts": { "critical": 1, "high": 1, "medium": 1 } },
+    "findings": [
+        {
+            "rule_id": "laravel.app-key-exposed",
+            "severity": "critical",
+            "file_path": ".env",
+            "start_line": 3,
+            "message": "APP_KEY committed to the repository."
+        },
+        {
+            "rule_id": "laravel.debug-enabled",
+            "severity": "high",
+            "file_path": "config/app.php",
+            "start_line": 12,
+            "message": "Debug mode is enabled."
+        },
+        {
+            "rule_id": "laravel.mass-assignment",
+            "severity": "medium",
+            "file_path": "app/Models/User.php",
+            "start_line": 20,
+            "message": "Model guards nothing."
+        }
+    ]
+}
