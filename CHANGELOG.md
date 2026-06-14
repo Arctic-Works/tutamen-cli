@@ -6,6 +6,8 @@ contain breaking changes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-14
+
 - `tutamen scan --agent` — emit a single JSON envelope (`envelope_version`,
   `prompt_version`, server-managed `prompt`, `scan`, and `findings` with rule
   `fix_md`) for an AI agent to act on. The fix prompt is fetched from the
@@ -30,5 +32,6 @@ Initial release.
   block-marked pre-push hook (native or Husky) driven by a committed
   `.tutamen.json`.
 
-[Unreleased]: https://github.com/Arctic-Works/tutamen-cli/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Arctic-Works/tutamen-cli/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Arctic-Works/tutamen-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Arctic-Works/tutamen-cli/releases/tag/v0.1.0
