@@ -21,6 +21,7 @@ use Tutamen\Cli\Console\AuthStatusCommand;
 use Tutamen\Cli\Console\HooksInstallCommand;
 use Tutamen\Cli\Console\HooksUninstallCommand;
 use Tutamen\Cli\Console\ScanCommand;
+use Tutamen\Cli\Console\SkillInstallCommand;
 
 // Report the actually-installed version (from the Composer metadata) rather
 // than a hardcoded string, so `tutamen --version` never drifts from the tag.
@@ -42,6 +43,7 @@ $application->addCommands([
     new AuthLogoutCommand,
     new HooksInstallCommand,
     new HooksUninstallCommand,
+    new SkillInstallCommand,
 ]);
 
 exit($application->run());

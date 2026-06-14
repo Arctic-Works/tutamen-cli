@@ -46,6 +46,16 @@ final class GuzzleApiClient implements ApiClient
         return $this->decode($this->send($server, $token, 'GET', '/api/v1/scans/'.rawurlencode($id)));
     }
 
+    public function getAgentPrompt(string $server, string $token): array
+    {
+        $body = $this->decode($this->send($server, $token, 'GET', '/api/v1/agent/prompt'));
+
+        return [
+            'version' => (int) ($body['version'] ?? 1),
+            'prompt' => (string) ($body['prompt'] ?? ''),
+        ];
+    }
+
     /**
      * @param  array<string, mixed>  $options
      */

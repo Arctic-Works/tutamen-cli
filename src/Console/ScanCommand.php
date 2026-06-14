@@ -9,6 +9,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Tutamen\Cli\Agent\PromptCache;
 use Tutamen\Cli\Config\Config;
 use Tutamen\Cli\Config\ProjectConfig;
 use Tutamen\Cli\Findings\ExitCode;
@@ -35,8 +36,12 @@ final class ScanCommand extends Command
 
     private readonly Closure $sleeper;
 
-    public function __construct(?ApiClient $api = null, ?Closure $sleeper = null, private readonly ?Config $config = null)
-    {
+    public function __construct(
+        ?ApiClient $api = null,
+        ?Closure $sleeper = null,
+        private readonly ?Config $config = null,
+        private readonly ?PromptCache $promptCache = null,
+    ) {
         parent::__construct();
         $this->api = $api ?? new GuzzleApiClient;
         $this->sleeper = $sleeper ?? static fn (int $seconds) => sleep($seconds);
@@ -49,6 +54,7 @@ final class ScanCommand extends Command
             ->addOption('fail-on', null, InputOption::VALUE_REQUIRED, 'Threshold that makes the scan fail: critical|high|medium|low|any')
             ->addOption('include-untracked', null, InputOption::VALUE_NONE, 'Also scan untracked (but not git-ignored) files')
             ->addOption('json', null, InputOption::VALUE_NONE, 'Print the raw results envelope and nothing else')
+            ->addOption('agent', null, InputOption::VALUE_NONE, 'Emit a single JSON envelope (prompt + scan + findings) for an AI agent')
             ->addOption('hook', null, InputOption::VALUE_NONE, 'Hook mode: honour .tutamen.json branch gating')
             ->addOption('server', null, InputOption::VALUE_REQUIRED, 'Override the configured server URL')
             ->addOption('token', null, InputOption::VALUE_REQUIRED, 'Override the configured API token')
@@ -58,11 +64,16 @@ final class ScanCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $json = (bool) $input->getOption('json');
+        $agent = (bool) $input->getOption('agent');
+
+        // Both --json and --agent emit a single machine-readable envelope and
+        // nothing else: no table, no progress lines, errors as JSON too.
+        $quiet = $json || $agent;
 
         $git = new Git((string) getcwd());
 
         if (! $git->isRepository()) {
-            return $this->fail($output, $json, 'tutamen must be run inside a git repository.');
+            return $this->fail($output, $quiet, 'tutamen must be run inside a git repository.');
         }
 
         $repoRoot = $git->topLevel();
@@ -74,19 +85,19 @@ final class ScanCommand extends Command
         $token = (string) ($input->getOption('token') ?? $stored['token'] ?? '');
 
         if ($server === '' || $token === '') {
-            return $this->fail($output, $json, 'Not authenticated. Run `tutamen auth` first.');
+            return $this->fail($output, $quiet, 'Not authenticated. Run `tutamen auth` first.');
         }
 
         try {
             $project = ProjectConfig::load($repoRoot);
         } catch (\RuntimeException $e) {
-            return $this->fail($output, $json, $e->getMessage());
+            return $this->fail($output, $quiet, $e->getMessage());
         }
 
         $branch = $git->currentBranch();
 
         if ((bool) $input->getOption('hook') && ! BranchMatcher::shouldRun($branch, $project->hookBranches())) {
-            if (! $json) {
+            if (! $quiet) {
                 $output->writeln("tutamen: branch '{$branch}' is excluded by .tutamen.json — skipping scan.");
             }
 
@@ -96,7 +107,7 @@ final class ScanCommand extends Command
         $failOn = (string) ($input->getOption('fail-on') ?? $project->failOn() ?? 'any');
 
         if (! Severity::isValidThreshold($failOn)) {
-            return $this->fail($output, $json, "Invalid --fail-on value '{$failOn}'. Use one of: ".implode(', ', Severity::thresholds()));
+            return $this->fail($output, $quiet, "Invalid --fail-on value '{$failOn}'. Use one of: ".implode(', ', Severity::thresholds()));
         }
 
         $tarball = null;
@@ -110,11 +121,11 @@ final class ScanCommand extends Command
                 'commit_sha' => $git->headSha(),
             ]);
 
-            $envelope = $this->poll($created['id'], $server, $token, (int) $input->getOption('timeout'), $output, $json);
+            $envelope = $this->poll($created['id'], $server, $token, (int) $input->getOption('timeout'), $output, $quiet);
         } catch (ApiException $e) {
-            return $this->fail($output, $json, $e->getMessage());
+            return $this->fail($output, $quiet, $e->getMessage());
         } catch (\RuntimeException $e) {
-            return $this->fail($output, $json, $e->getMessage());
+            return $this->fail($output, $quiet, $e->getMessage());
         } finally {
             if ($tarball !== null && is_file($tarball)) {
                 @unlink($tarball);
@@ -122,13 +133,34 @@ final class ScanCommand extends Command
         }
 
         if (($envelope['status'] ?? null) === 'failed') {
-            return $this->fail($output, $json, 'Scan failed: '.($envelope['error'] ?? 'unknown error'));
+            return $this->fail($output, $quiet, 'Scan failed: '.($envelope['error'] ?? 'unknown error'));
         }
 
         /** @var list<array<string, mixed>> $findings */
         $findings = is_array($envelope['findings'] ?? null) ? $envelope['findings'] : [];
 
-        if ($json) {
+        if ($agent) {
+            try {
+                $prompt = $this->promptCacheFor($config)->remember(
+                    $server,
+                    fn (): array => $this->api->getAgentPrompt($server, $token),
+                );
+            } catch (ApiException $e) {
+                return $this->fail($output, true, $e->getMessage());
+            }
+
+            $output->writeln((string) json_encode([
+                'envelope_version' => 1,
+                'prompt_version' => $prompt['version'],
+                'prompt' => $prompt['prompt'],
+                'scan' => [
+                    'id' => $envelope['id'] ?? $created['id'],
+                    'status' => $envelope['status'] ?? null,
+                    'stats' => $envelope['stats'] ?? null,
+                ],
+                'findings' => $findings,
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        } elseif ($json) {
             $output->writeln((string) json_encode($envelope, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         } else {
             $output->writeln((new FindingsRenderer)->render($envelope));
@@ -138,13 +170,25 @@ final class ScanCommand extends Command
     }
 
     /**
+     * The prompt cache to use — an injected one (tests) or one rooted next to
+     * the resolved credentials, keyed on the configured server.
+     */
+    private function promptCacheFor(Config $config): PromptCache
+    {
+        return $this->promptCache ?? new PromptCache(
+            $config->promptCachePath(),
+            static fn (): int => time(),
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function poll(string $id, string $server, string $token, int $timeout, OutputInterface $output, bool $json): array
+    private function poll(string $id, string $server, string $token, int $timeout, OutputInterface $output, bool $quiet): array
     {
         $waited = 0;
 
-        if (! $json) {
+        if (! $quiet) {
             $output->writeln('Scanning… (this usually takes 15–60s)');
         }
 
@@ -165,9 +209,9 @@ final class ScanCommand extends Command
         }
     }
 
-    private function fail(OutputInterface $output, bool $json, string $message): int
+    private function fail(OutputInterface $output, bool $quiet, string $message): int
     {
-        if ($json) {
+        if ($quiet) {
             $output->writeln((string) json_encode(['error' => $message]));
         } else {
             $output->writeln('<error>tutamen: '.$message.'</error>');

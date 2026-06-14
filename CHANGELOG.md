@@ -6,6 +6,16 @@ contain breaking changes.
 
 ## [Unreleased]
 
+- `tutamen scan --agent` — emit a single JSON envelope (`envelope_version`,
+  `prompt_version`, server-managed `prompt`, `scan`, and `findings` with rule
+  `fix_md`) for an AI agent to act on. The fix prompt is fetched from the
+  server and cached locally for 5 minutes, so a better prompt ships
+  server-side without a CLI release. Implies JSON-only output.
+- `tutamen skill:install` — install the bundled `tutamen-security` agent skill
+  into Claude Code (`.claude/skills`) or Codex (`--agent=codex`, `.codex/skills`),
+  per-project or `--global`; `--print` writes it to stdout for any other agent.
+  The skill ships with the CLI, so no repo checkout is needed.
+
 ## [0.1.0] - 2026-06-14
 
 Initial release.

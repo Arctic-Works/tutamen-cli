@@ -47,6 +47,14 @@ final class Config
     }
 
     /**
+     * Where the agent prompt is cached (alongside the credentials, same dir).
+     */
+    public function promptCachePath(): string
+    {
+        return $this->baseDir.'/agent-prompt.json';
+    }
+
+    /**
      * @return array{server?: string, token?: string}
      */
     public function load(): array

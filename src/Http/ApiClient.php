@@ -28,4 +28,14 @@ interface ApiClient
      * @throws ApiException on transport, auth or server error
      */
     public function getScan(string $server, string $token, string $id): array;
+
+    /**
+     * Fetch the server-managed agent fix prompt (versioned). The CLI caches the
+     * result for a few minutes so `--agent` runs don't re-fetch on every scan.
+     *
+     * @return array{version: int, prompt: string}
+     *
+     * @throws ApiException on transport, auth or server error
+     */
+    public function getAgentPrompt(string $server, string $token): array;
 }

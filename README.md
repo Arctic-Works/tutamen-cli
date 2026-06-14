@@ -56,6 +56,7 @@ tutamen scan                      # tracked + locally-modified files
 tutamen scan --include-untracked  # also untracked, non-ignored files
 tutamen scan --fail-on=high       # only fail on high/critical findings
 tutamen scan --json               # machine-readable envelope
+tutamen scan --agent              # one JSON envelope for an AI agent (see below)
 ```
 
 The snapshot includes your tracked files at their **current** working-tree
@@ -63,6 +64,43 @@ content (so a secret you just edited but have not committed is still caught)
 and excludes anything git ignores — `vendor/`, `node_modules/` and `.git/` are
 never uploaded. Results are ephemeral: they are returned to you and never
 merged into your repository's dashboard findings.
+
+### Fix with your own AI (`--agent`)
+
+`tutamen scan --agent` emits a single JSON envelope an AI agent can act on:
+
+```jsonc
+{
+  "envelope_version": 1,
+  "prompt_version": 1,
+  "prompt": "…server-managed instructions for the agent…",
+  "scan": { "id": "…", "status": "completed", "stats": { … } },
+  "findings": [ { "rule_id": "…", "fix_md": "…", … } ]
+}
+```
+
+The `prompt` is fetched from the server (and cached locally for 5 minutes), so
+the behaviour an agent follows improves server-side without a CLI release. Each
+finding carries its rule's `fix_md` remediation guidance. The agent reads
+findings and edits locally on **your** AI subscription — your code never goes
+to a third-party model by us.
+
+### Install the agent skill
+
+The `tutamen-security` skill ships with this CLI. It tells your agent to run
+`tutamen scan --agent`, then follow the server-managed prompt in the output.
+Install it into your agent's skills directory:
+
+```bash
+tutamen skill:install                 # Claude Code, this project (.claude/skills)
+tutamen skill:install --global        # Claude Code, all projects (~/.claude/skills)
+tutamen skill:install --agent=codex   # Codex CLI (.codex/skills) — add --global too if you like
+tutamen skill:install --print         # print SKILL.md to stdout (any other agent)
+```
+
+Both Claude Code and Codex auto-discover the skill; just ask your agent to
+"scan this repo for security issues". Re-running `tutamen skill:install` after
+a `composer global update tutamen/cli` refreshes the installed skill.
 
 ### Exit codes
 

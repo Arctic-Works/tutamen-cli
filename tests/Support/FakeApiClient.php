@@ -20,15 +20,19 @@ final class FakeApiClient implements ApiClient
     /** @var array<string, mixed>|null */
     public ?array $createMeta = null;
 
+    public int $promptCalls = 0;
+
     /** @var list<array<string, mixed>> */
     private array $statusSequence;
 
     /**
      * @param  list<array<string, mixed>>  $statusSequence  envelopes returned by successive getScan() calls
+     * @param  array{version: int, prompt: string}  $prompt  the agent prompt returned by getAgentPrompt()
      */
     public function __construct(
         array $statusSequence,
         private readonly bool $failCreate = false,
+        private readonly array $prompt = ['version' => 1, 'prompt' => 'Follow these steps.'],
     ) {
         $this->statusSequence = $statusSequence;
     }
@@ -51,5 +55,12 @@ final class FakeApiClient implements ApiClient
         return count($this->statusSequence) > 1
             ? array_shift($this->statusSequence)
             : $this->statusSequence[0];
+    }
+
+    public function getAgentPrompt(string $server, string $token): array
+    {
+        $this->promptCalls++;
+
+        return $this->prompt;
     }
 }
