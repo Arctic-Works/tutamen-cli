@@ -32,8 +32,8 @@ final class SkillInstallCommand extends Command
     protected function configure(): void
     {
         $this->setName('skill:install')
-            ->setDescription('Install the Tutamen agent skill into Claude Code or Codex')
-            ->addOption('agent', null, InputOption::VALUE_REQUIRED, 'Target agent: '.implode('|', SkillInstaller::agents()), 'claude')
+            ->setDescription('Install the Tutamen agent skill into Claude Code and Codex')
+            ->addOption('agent', null, InputOption::VALUE_REQUIRED, 'Install for one agent only ('.implode('|', SkillInstaller::agents()).'); default installs for both')
             ->addOption('global', null, InputOption::VALUE_NONE, 'Install for all projects (in your home directory) instead of just this one')
             ->addOption('print', null, InputOption::VALUE_NONE, 'Print the skill to stdout instead of installing it (for any other agent)');
     }
@@ -49,30 +49,44 @@ final class SkillInstallCommand extends Command
             return Command::SUCCESS;
         }
 
-        $agent = (string) $input->getOption('agent');
+        // No --agent installs for every supported agent; --agent narrows to one.
+        $requested = $input->getOption('agent');
+        $agents = SkillInstaller::agents();
 
-        if (! SkillInstaller::isValidAgent($agent)) {
-            $io->error("Unknown --agent '{$agent}'. Use one of: ".implode(', ', SkillInstaller::agents()).'.');
+        if ($requested !== null) {
+            if (! SkillInstaller::isValidAgent((string) $requested)) {
+                $io->error("Unknown --agent '{$requested}'. Use one of: ".implode(', ', $agents).'.');
 
-            return Command::FAILURE;
+                return Command::FAILURE;
+            }
+
+            $agents = [(string) $requested];
         }
 
+        $global = (bool) $input->getOption('global');
+        $lines = [];
+
         try {
-            $result = $installer->install($agent, (bool) $input->getOption('global'));
+            foreach ($agents as $agent) {
+                $result = $installer->install($agent, $global);
+                $verb = $result['status'] === SkillInstaller::STATUS_UPDATED ? 'Updated' : 'Installed';
+                $lines[] = sprintf('%s %s skill: %s', $verb, self::label($agent), $result['path']);
+            }
         } catch (RuntimeException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
 
-        $verb = $result['status'] === SkillInstaller::STATUS_UPDATED ? 'Updated' : 'Installed';
-        $io->success("{$verb} the tutamen-security skill at {$result['path']}");
-        $io->writeln(sprintf(
-            'Ask %s to "scan this repo for security issues" and it will run `tutamen scan --agent` and follow the findings.',
-            $agent === 'codex' ? 'Codex' : 'Claude Code',
-        ));
+        $io->success($lines);
+        $io->writeln('Ask your agent to "scan this repo for security issues" and it will run `tutamen scan --agent` and follow the findings.');
 
         return Command::SUCCESS;
+    }
+
+    private static function label(string $agent): string
+    {
+        return $agent === 'codex' ? 'Codex' : 'Claude Code';
     }
 
     private function defaultInstaller(): SkillInstaller

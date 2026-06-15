@@ -55,14 +55,26 @@ it('rejects an unknown agent', function () {
         ->toThrow(RuntimeException::class);
 });
 
-it('command installs and reports the path', function () {
+it('command installs for both agents by default', function () {
     $command = new SkillInstallCommand(makeInstaller($this->home, $this->project, $this->source));
     $tester = new CommandTester($command);
     $tester->execute([]);
 
     expect($tester->getStatusCode())->toBe(0)
-        ->and($tester->getDisplay())->toContain('.claude/skills/tutamen-security/SKILL.md')
-        ->and(file_exists($this->project.'/.claude/skills/tutamen-security/SKILL.md'))->toBeTrue();
+        ->and(file_exists($this->project.'/.claude/skills/tutamen-security/SKILL.md'))->toBeTrue()
+        ->and(file_exists($this->project.'/.codex/skills/tutamen-security/SKILL.md'))->toBeTrue()
+        ->and($tester->getDisplay())->toContain('Claude Code')
+        ->and($tester->getDisplay())->toContain('Codex');
+});
+
+it('command --agent installs for only the named agent', function () {
+    $command = new SkillInstallCommand(makeInstaller($this->home, $this->project, $this->source));
+    $tester = new CommandTester($command);
+    $tester->execute(['--agent' => 'codex']);
+
+    expect($tester->getStatusCode())->toBe(0)
+        ->and(file_exists($this->project.'/.codex/skills/tutamen-security/SKILL.md'))->toBeTrue()
+        ->and(is_dir($this->project.'/.claude'))->toBeFalse();
 });
 
 it('command --print writes the skill to stdout without installing', function () {

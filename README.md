@@ -92,15 +92,18 @@ The `tutamen-security` skill ships with this CLI. It tells your agent to run
 Install it into your agent's skills directory:
 
 ```bash
-tutamen skill:install                 # Claude Code, this project (.claude/skills)
-tutamen skill:install --global        # Claude Code, all projects (~/.claude/skills)
-tutamen skill:install --agent=codex   # Codex CLI (.codex/skills) — add --global too if you like
+tutamen skill:install                 # both Claude Code & Codex, this project
+tutamen skill:install --global        # both, for all projects (in your home dir)
+tutamen skill:install --agent=claude  # only Claude Code (.claude/skills)
+tutamen skill:install --agent=codex   # only Codex CLI (.codex/skills)
 tutamen skill:install --print         # print SKILL.md to stdout (any other agent)
 ```
 
-Both Claude Code and Codex auto-discover the skill; just ask your agent to
-"scan this repo for security issues". Re-running `tutamen skill:install` after
-a `composer global update tutamen/cli` refreshes the installed skill.
+By default it installs for **both** Claude Code (`.claude/skills`) and Codex
+(`.codex/skills`); pass `--agent` to target just one. Both auto-discover the
+skill, so just ask your agent to "scan this repo for security issues".
+Re-running `tutamen skill:install` after a `composer global update tutamen/cli`
+refreshes the installed skill.
 
 ### Exit codes
 
